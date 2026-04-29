@@ -1,0 +1,781 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>排課系統</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #F7F6F2;
+    --surface: #FFFFFF;
+    --surface2: #F0EEE8;
+    --border: rgba(0,0,0,0.1);
+    --border-strong: rgba(0,0,0,0.18);
+    --text: #1A1916;
+    --text-muted: #7A7870;
+    --accent: #185FA5;
+    --accent-light: #E6F1FB;
+    --danger: #A32D2D;
+    --danger-light: #FCEBEB;
+    --warn-bg: #FFF8E8;
+    --warn-text: #854F0B;
+    --dinner-bg: #EFF6FF;
+    --dinner-text: #185FA5;
+    --radius: 8px;
+    --radius-lg: 12px;
+  }
+  body {
+    font-family: 'Noto Sans TC', sans-serif;
+    font-size: 13px;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+  }
+  /* ── Header ── */
+  header {
+    background: var(--surface);
+    border-bottom: 0.5px solid var(--border-strong);
+    padding: 0 20px;
+    height: 52px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  header h1 {
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    color: var(--text);
+  }
+  header .subtitle {
+    font-size: 11px;
+    color: var(--text-muted);
+  }
+  header .spacer { flex: 1; }
+  .header-btn {
+    height: 32px;
+    padding: 0 14px;
+    font-size: 12px;
+    font-family: inherit;
+    border: 0.5px solid var(--border-strong);
+    border-radius: var(--radius);
+    background: var(--surface);
+    color: var(--text);
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background 0.15s;
+  }
+  .header-btn:hover { background: var(--surface2); }
+  .header-btn.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .header-btn.primary:hover { background: #0C447C; border-color: #0C447C; }
+
+  /* ── Main layout ── */
+  .main { padding: 16px 20px; max-width: 1400px; margin: 0 auto; }
+
+  /* ── Add course panel ── */
+  .add-panel {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+    background: var(--surface);
+    border: 0.5px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 12px 16px;
+    margin-bottom: 12px;
+  }
+  .add-panel label { font-size: 11px; color: var(--text-muted); font-weight: 500; }
+  .add-panel input {
+    height: 34px;
+    padding: 0 10px;
+    font-size: 13px;
+    font-family: inherit;
+    border: 0.5px solid var(--border-strong);
+    border-radius: var(--radius);
+    background: var(--bg);
+    color: var(--text);
+    width: 150px;
+    outline: none;
+    transition: box-shadow 0.15s;
+  }
+  .add-panel input:focus { box-shadow: 0 0 0 2px #378ADD44; border-color: var(--accent); }
+  .add-panel input::placeholder { color: var(--text-muted); }
+  .add-btn {
+    height: 34px;
+    padding: 0 16px;
+    font-size: 13px;
+    font-family: inherit;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: var(--radius);
+    cursor: pointer;
+    font-weight: 500;
+    transition: background 0.15s;
+  }
+  .add-btn:hover { background: #0C447C; }
+
+  /* ── Pool ── */
+  .pool-wrap {
+    background: var(--surface);
+    border: 0.5px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 12px 16px;
+    margin-bottom: 12px;
+    min-height: 60px;
+  }
+  .pool-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+  .pool-head strong { font-size: 13px; font-weight: 500; }
+  .pool-head span { font-size: 11px; color: var(--text-muted); }
+  .pool-items { display: flex; flex-wrap: wrap; gap: 7px; min-height: 30px; }
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 6px 8px 6px 12px;
+    border-radius: var(--radius);
+    background: var(--surface);
+    border: 0.5px solid var(--border-strong);
+    cursor: grab;
+    user-select: none;
+    transition: transform 0.1s, box-shadow 0.1s;
+  }
+  .chip:hover { transform: translateY(-1px); box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+  .chip:active { cursor: grabbing; transform: scale(0.96); }
+  .chip.dragging { opacity: 0.45; }
+  .chip-info { display: flex; flex-direction: column; gap: 1px; }
+  .chip-name { font-size: 12px; font-weight: 500; }
+  .chip-teacher { font-size: 10px; color: var(--text-muted); }
+  .chip-badge {
+    width: 20px; height: 20px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 700; color: #fff;
+    flex-shrink: 0;
+  }
+  .chip-del {
+    width: 18px; height: 18px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 10px;
+    cursor: pointer;
+    color: var(--text-muted);
+    border: 0.5px solid var(--border);
+    background: transparent;
+    transition: all 0.12s;
+    flex-shrink: 0;
+  }
+  .chip-del:hover { background: var(--danger-light); color: var(--danger); border-color: #F7C1C1; }
+
+  /* ── Conflict bar ── */
+  .conflict-bar {
+    display: none;
+    padding: 8px 14px;
+    border-radius: var(--radius);
+    background: var(--danger-light);
+    border: 0.5px solid #F7C1C1;
+    color: var(--danger);
+    font-size: 12px;
+    margin-bottom: 10px;
+  }
+  .conflict-bar.show { display: block; }
+
+  /* ── Legend ── */
+  .legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+    margin-bottom: 10px;
+    font-size: 11px;
+    color: var(--text-muted);
+  }
+  .legend-dot { width: 12px; height: 12px; border-radius: 3px; flex-shrink: 0; }
+  .legend-item { display: flex; align-items: center; gap: 4px; }
+  .legend-divider { width: 1px; height: 14px; background: var(--border); }
+
+  /* ── Table ── */
+  .table-scroll {
+    overflow-x: auto;
+    border-radius: var(--radius-lg);
+    border: 0.5px solid var(--border-strong);
+    background: var(--surface);
+    box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+  }
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    table-layout: fixed;
+  }
+  thead th {
+    background: var(--surface2);
+    padding: 8px 4px;
+    text-align: center;
+    font-size: 12px;
+    font-weight: 500;
+    border: 0.5px solid var(--border);
+    white-space: nowrap;
+  }
+  .time-col { width: 86px; }
+  td { border: 0.5px solid var(--border); padding: 0; vertical-align: top; }
+
+  /* Time cell */
+  .time-cell {
+    background: var(--surface2);
+    text-align: center;
+    vertical-align: middle;
+    font-size: 10px;
+    color: var(--text-muted);
+  }
+  .time-inner {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    padding: 5px 3px;
+    height: 100%;
+  }
+  .time-text { white-space: nowrap; font-size: 10px; }
+  .toggle-btn {
+    width: 22px; height: 22px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    font-size: 10px;
+    border: 0.5px solid var(--border-strong);
+    background: var(--surface);
+    color: var(--text-muted);
+    transition: background 0.12s;
+    flex-shrink: 0;
+  }
+  .toggle-btn:hover { background: var(--bg); }
+
+  /* Slot group */
+  .slot-group {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: repeat(3, 1fr);
+    gap: 1px;
+    height: 76px;
+    transition: height 0.2s ease;
+    overflow: hidden;
+  }
+  .slot {
+    border-radius: 2px;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    cursor: default;
+    transition: outline 0.1s;
+  }
+  .slot.drag-over { outline: 2px solid var(--accent); outline-offset: -2px; }
+  .slot-lbl {
+    position: absolute;
+    top: 1px; left: 2px;
+    font-size: 8px;
+    color: rgba(0,0,0,0.28);
+    pointer-events: none;
+    line-height: 1;
+  }
+  .slot-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1px;
+    padding: 2px;
+    text-align: center;
+    width: 100%; height: 100%;
+    pointer-events: none;
+  }
+  .slot-name { font-size: 9px; font-weight: 500; color: #fff; line-height: 1.2; word-break: break-all; }
+  .slot-teacher { font-size: 8px; color: rgba(255,255,255,0.82); line-height: 1; }
+  .slot-rm {
+    position: absolute;
+    top: 1px; right: 1px;
+    width: 13px; height: 13px;
+    border-radius: 50%;
+    background: rgba(0,0,0,0.22);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 8px;
+    color: #fff;
+    z-index: 2;
+    line-height: 1;
+  }
+  .slot:hover .slot-rm { display: flex; }
+  .slot-conflict { outline: 2px solid #E24B4A !important; outline-offset: -2px; }
+  .s-1b { background: #E6F1FB; }
+  .s-1a { background: #D3D1C7; }
+  .s-2s { background: #EAF3DE; }
+  .s-3a { background: #FAC775; }
+  .s-4b { background: #FBEAF0; }
+  .s-4a { background: #EEEDFE; }
+
+  /* Row hidden */
+  .row-hidden .slot-group { height: 0 !important; }
+  .row-hidden .time-cell { background: var(--bg); }
+  .row-hidden .time-text { display: none; }
+
+  /* Break / dinner rows */
+  .break-row td { background: #FFF8E8 !important; }
+  .break-row .time-cell { background: #FAEEDA !important; }
+  .break-lbl { font-size: 13px; font-weight: 500; color: #854F0B; text-align: center; padding: 10px 4px; }
+  .dinner-row td { background: #EFF6FF !important; }
+  .dinner-row .time-cell { background: #D3E8F4 !important; }
+  .dinner-lbl { font-size: 13px; font-weight: 500; color: #185FA5; text-align: center; padding: 8px 4px; }
+
+  /* Print */
+  @media print {
+    header, .add-panel, .pool-wrap, .legend, .conflict-bar { display: none !important; }
+    body { background: #fff; }
+    .main { padding: 0; }
+    .table-scroll { border: none; box-shadow: none; }
+    .toggle-btn { display: none; }
+    .slot-rm { display: none !important; }
+    .row-hidden { display: none !important; }
+  }
+  @media (max-width: 700px) {
+    .main { padding: 10px 8px; }
+    header { padding: 0 10px; }
+    header h1 { font-size: 13px; }
+    .add-panel input { width: 120px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>排課系統</h1>
+  <span class="subtitle">課表管理工具</span>
+  <div class="spacer"></div>
+  <button class="header-btn" onclick="exportPDF()">匯出 PDF</button>
+  <button class="header-btn" onclick="exportWord()">匯出 Word</button>
+</header>
+
+<div class="main">
+
+  <!-- Add course -->
+  <div class="add-panel">
+    <label>新增課程</label>
+    <input type="text" id="inp-course" placeholder="課程名稱" />
+    <input type="text" id="inp-teacher" placeholder="教師姓名" />
+    <button class="add-btn" onclick="addCourse()">新增</button>
+  </div>
+
+  <!-- Pool -->
+  <div class="pool-wrap">
+    <div class="pool-head">
+      <strong>課程方塊</strong>
+      <span>每課程可排 2 次，用完自動消失；課表內方塊可互相拖曳移動</span>
+    </div>
+    <div class="pool-items" id="pool"></div>
+  </div>
+
+  <!-- Conflict -->
+  <div class="conflict-bar" id="conflict-bar"></div>
+
+  <!-- Legend -->
+  <div class="legend">
+    <span>底色說明</span>
+    <div class="legend-item"><div class="legend-dot" style="background:#E6F1FB"></div>1前</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#D3D1C7"></div>1後</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#EAF3DE"></div>2小</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#FAC775"></div>3後</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#FBEAF0"></div>4前</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#EEEDFE"></div>4後</div>
+    <div class="legend-divider"></div>
+    <span>點時間欄的 ▼ 可折疊該時段列</span>
+  </div>
+
+  <!-- Table -->
+  <div class="table-scroll">
+    <table id="schedule-table">
+      <thead id="thead"></thead>
+      <tbody id="tbody"></tbody>
+    </table>
+  </div>
+
+</div>
+
+<script>
+const DAYS = ['星期一','星期二','星期三','星期四','星期五','星期六'];
+const TIME_ROWS = [
+  {label:'0900-1030', type:'normal'},
+  {label:'1030-1200', type:'normal'},
+  {label:'1200-1330', type:'break'},
+  {label:'1330-1500', type:'normal'},
+  {label:'1500-1630', type:'normal'},
+  {label:'1630-1800', type:'normal'},
+  {label:'1800-1930', type:'dinner'},
+  {label:'1930-2100', type:'normal'},
+  {label:'2100-2130', type:'normal'},
+];
+const SLOTS = [
+  {key:'1b',label:'1前',cls:'s-1b'},
+  {key:'1a',label:'1後',cls:'s-1a'},
+  {key:'2s',label:'2小',cls:'s-2s'},
+  {key:'3a',label:'3後',cls:'s-3a'},
+  {key:'4b',label:'4前',cls:'s-4b'},
+  {key:'4a',label:'4後',cls:'s-4a'},
+];
+const COLORS = [
+  '#185FA5','#1D9E75','#D85A30','#7F77DD',
+  '#D4537E','#BA7517','#2D8A4E','#993556','#533AB7','#5B7FA6',
+];
+
+let courses = [];
+let schedule = {};
+let rowHidden = {};
+let dragSource = null;
+
+const color = i => COLORS[i % COLORS.length];
+const getCourse = id => courses.find(c => c.id === id);
+const courseIdx = id => courses.findIndex(c => c.id === id);
+const countUsed = id => Object.values(schedule).filter(v => v && v.cid === id).length;
+
+function buildTable() {
+  const thead = document.getElementById('thead');
+  const tbody = document.getElementById('tbody');
+  thead.innerHTML = '<tr><th class="time-col">時間</th>' + DAYS.map(d => `<th>${d}</th>`).join('') + '</tr>';
+  tbody.innerHTML = '';
+
+  TIME_ROWS.forEach((row, ti) => {
+    const tr = document.createElement('tr');
+    tr.id = `tr-${ti}`;
+
+    if (row.type === 'break') {
+      tr.className = 'break-row';
+      const tdT = document.createElement('td');
+      tdT.className = 'time-cell';
+      tdT.innerHTML = `<div class="time-inner"><span class="time-text">${row.label}</span></div>`;
+      tr.appendChild(tdT);
+      const tdB = document.createElement('td');
+      tdB.colSpan = 6;
+      tdB.innerHTML = `<div class="break-lbl">午休時間</div>`;
+      tr.appendChild(tdB);
+      tbody.appendChild(tr);
+      return;
+    }
+
+    if (row.type === 'dinner') {
+      tr.className = 'dinner-row';
+      const tdT = document.createElement('td');
+      tdT.className = 'time-cell';
+      tdT.innerHTML = `<div class="time-inner"><span class="time-text">${row.label}</span></div>`;
+      tr.appendChild(tdT);
+      const tdD = document.createElement('td');
+      tdD.colSpan = 6;
+      tdD.innerHTML = `<div class="dinner-lbl">晚餐時間</div>`;
+      tr.appendChild(tdD);
+      tbody.appendChild(tr);
+      return;
+    }
+
+    const tdT = document.createElement('td');
+    tdT.className = 'time-cell';
+    tdT.innerHTML = `<div class="time-inner">
+      <span class="time-text">${row.label}</span>
+      <div class="toggle-btn" id="tog-${ti}" onclick="toggleRow(${ti})">▼</div>
+    </div>`;
+    tr.appendChild(tdT);
+
+    DAYS.forEach((d, di) => {
+      const td = document.createElement('td');
+      const sg = document.createElement('div');
+      sg.className = 'slot-group';
+      sg.id = `sg-${ti}-${di}`;
+      SLOTS.forEach((s, si) => {
+        const slot = document.createElement('div');
+        slot.className = `slot ${s.cls}`;
+        slot.id = `slot-${ti}-${di}-${si}`;
+        slot.dataset.ti = ti; slot.dataset.di = di; slot.dataset.si = si;
+        const lbl = document.createElement('span');
+        lbl.className = 'slot-lbl'; lbl.textContent = s.label;
+        slot.appendChild(lbl);
+        slot.addEventListener('dragover', e => { e.preventDefault(); slot.classList.add('drag-over'); });
+        slot.addEventListener('dragleave', () => slot.classList.remove('drag-over'));
+        slot.addEventListener('drop', e => { e.preventDefault(); slot.classList.remove('drag-over'); dropOnSlot(slot); });
+        sg.appendChild(slot);
+      });
+      td.appendChild(sg);
+      tr.appendChild(td);
+    });
+    tbody.appendChild(tr);
+  });
+}
+
+function toggleRow(ti) {
+  rowHidden[ti] = !rowHidden[ti];
+  const tr = document.getElementById(`tr-${ti}`);
+  const tog = document.getElementById(`tog-${ti}`);
+  if (rowHidden[ti]) {
+    tr.classList.add('row-hidden');
+    if (tog) tog.textContent = '▶';
+  } else {
+    tr.classList.remove('row-hidden');
+    if (tog) tog.textContent = '▼';
+  }
+}
+
+function renderPool() {
+  const pool = document.getElementById('pool');
+  pool.innerHTML = '';
+  if (courses.length === 0) {
+    pool.innerHTML = '<span style="font-size:12px;color:var(--text-muted);padding:4px 0">尚無課程，請在上方新增</span>';
+    return;
+  }
+  let hasAny = false;
+  courses.forEach((c, i) => {
+    const used = countUsed(c.id);
+    const remaining = 2 - used;
+    if (remaining <= 0) return;
+    hasAny = true;
+    const col = color(i);
+    const chip = document.createElement('div');
+    chip.className = 'chip';
+    chip.draggable = true;
+    chip.dataset.cid = c.id;
+    chip.style.borderColor = col + '66';
+    chip.style.background = col + '12';
+    chip.innerHTML = `
+      <div class="chip-info">
+        <span class="chip-name" style="color:${col}">${c.name}</span>
+        <span class="chip-teacher">${c.teacher}</span>
+      </div>
+      <div class="chip-badge" style="background:${col}">${remaining}</div>
+      <div class="chip-del" onclick="deleteCourse('${c.id}')">✕</div>`;
+    chip.addEventListener('dragstart', e => {
+      dragSource = { type: 'pool', cid: c.id };
+      chip.classList.add('dragging');
+      e.dataTransfer.effectAllowed = 'move';
+    });
+    chip.addEventListener('dragend', () => chip.classList.remove('dragging'));
+    pool.appendChild(chip);
+  });
+  if (!hasAny && courses.length > 0) {
+    pool.innerHTML = '<span style="font-size:12px;color:var(--text-muted);padding:4px 0">所有課程已排入課表（每課程最多 2 次）</span>';
+  }
+}
+
+function dropOnSlot(slot) {
+  if (!dragSource) return;
+  const { ti, di, si } = slot.dataset;
+  const key = `${ti}-${di}-${si}`;
+
+  if (dragSource.type === 'pool') {
+    const cid = dragSource.cid;
+    if (countUsed(cid) >= 2) return;
+    schedule[key] = { cid };
+  } else if (dragSource.type === 'slot') {
+    const fromKey = dragSource.key;
+    if (fromKey === key) return;
+    const fromData = schedule[fromKey];
+    if (!fromData) return;
+    const toData = schedule[key];
+    schedule[key] = fromData;
+    if (toData) schedule[fromKey] = toData;
+    else delete schedule[fromKey];
+  }
+  dragSource = null;
+  renderSlots();
+  renderPool();
+  checkConflicts();
+}
+
+function renderSlots() {
+  document.querySelectorAll('.slot').forEach(slot => {
+    const { ti, di, si } = slot.dataset;
+    const key = `${ti}-${di}-${si}`;
+    const s = SLOTS[parseInt(si)];
+    slot.querySelectorAll('.slot-content, .slot-rm').forEach(el => el.remove());
+    slot.classList.remove('slot-conflict');
+    const lbl = slot.querySelector('.slot-lbl');
+    const data = schedule[key];
+    if (data) {
+      const course = getCourse(data.cid);
+      if (!course) return;
+      const col = color(courseIdx(data.cid));
+      slot.style.background = col;
+      if (lbl) lbl.style.display = 'none';
+      const content = document.createElement('div');
+      content.className = 'slot-content';
+      content.innerHTML = `<span class="slot-name">${course.name}</span><span class="slot-teacher">${course.teacher}</span>`;
+      slot.draggable = true;
+      slot.ondragstart = e => { dragSource = { type: 'slot', key }; e.dataTransfer.effectAllowed = 'move'; };
+      slot.ondragend = () => { dragSource = null; };
+      slot.appendChild(content);
+      const rm = document.createElement('div');
+      rm.className = 'slot-rm'; rm.textContent = '✕';
+      rm.onclick = () => {
+        delete schedule[key];
+        slot.draggable = false; slot.ondragstart = null;
+        renderSlots(); renderPool(); checkConflicts();
+      };
+      slot.appendChild(rm);
+    } else {
+      slot.style.background = '';
+      slot.className = `slot ${s.cls}`;
+      slot.draggable = false; slot.ondragstart = null;
+      if (lbl) lbl.style.display = '';
+    }
+  });
+}
+
+function checkConflicts() {
+  const teacherMap = {};
+  Object.entries(schedule).forEach(([key, val]) => {
+    if (!val) return;
+    const course = getCourse(val.cid);
+    if (!course) return;
+    const parts = key.split('-');
+    const tk = `${parts[0]}-${parts[1]}`;
+    if (!teacherMap[course.teacher]) teacherMap[course.teacher] = {};
+    if (!teacherMap[course.teacher][tk]) teacherMap[course.teacher][tk] = [];
+    teacherMap[course.teacher][tk].push({ key, course });
+  });
+  const conflicts = [];
+  Object.entries(teacherMap).forEach(([teacher, times]) => {
+    Object.entries(times).forEach(([tk, entries]) => {
+      if (entries.length > 1) {
+        const [ti, di] = tk.split('-');
+        conflicts.push(`${teacher} 在 ${DAYS[di]} ${TIME_ROWS[ti].label} 衝堂（${entries.map(e => e.course.name).join('、')}）`);
+        entries.forEach(e => {
+          const el = document.getElementById(`slot-${e.key}`);
+          if (el) el.classList.add('slot-conflict');
+        });
+      }
+    });
+  });
+  const bar = document.getElementById('conflict-bar');
+  if (conflicts.length) {
+    bar.className = 'conflict-bar show';
+    bar.innerHTML = '<strong>衝堂警告：</strong> ' + conflicts.join('　|　');
+  } else {
+    bar.className = 'conflict-bar';
+  }
+}
+
+function addCourse() {
+  const name = document.getElementById('inp-course').value.trim();
+  const teacher = document.getElementById('inp-teacher').value.trim();
+  if (!name || !teacher) return;
+  courses.push({ id: Date.now().toString(36) + Math.random().toString(36).slice(2, 5), name, teacher });
+  document.getElementById('inp-course').value = '';
+  document.getElementById('inp-teacher').value = '';
+  document.getElementById('inp-course').focus();
+  renderPool();
+}
+
+function deleteCourse(cid) {
+  Object.keys(schedule).forEach(k => { if (schedule[k]?.cid === cid) delete schedule[k]; });
+  courses = courses.filter(c => c.id !== cid);
+  renderPool(); renderSlots(); checkConflicts();
+}
+
+function exportPDF() {
+  let html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>課表</title>
+  <style>
+    body{font-family:sans-serif;font-size:10px;margin:20px}
+    h2{font-size:14px;margin-bottom:12px;font-weight:500}
+    table{border-collapse:collapse;width:100%}
+    th,td{border:1px solid #ccc;padding:3px;text-align:center;vertical-align:top}
+    th{background:#f5f5f5;font-size:10px}
+    .sg{display:grid;grid-template-columns:1fr 1fr;gap:1px}
+    .s{padding:2px;min-height:18px;border-radius:2px;font-size:8px}
+    .break-row td{background:#FFF8E8}.dinner-row td{background:#EFF6FF}
+    .special-lbl{text-align:center;padding:6px;font-weight:500;font-size:11px}
+  </style></head><body><h2>課表</h2>
+  <table><tr><th style="width:68px">時間</th>${DAYS.map(d => `<th>${d}</th>`).join('')}</tr>`;
+  TIME_ROWS.forEach((row, ti) => {
+    if (row.type === 'break') {
+      html += `<tr class="break-row"><td style="font-size:9px">${row.label}</td><td colspan="6"><div class="special-lbl" style="color:#854F0B">午休時間</div></td></tr>`;
+      return;
+    }
+    if (row.type === 'dinner') {
+      html += `<tr class="dinner-row"><td style="font-size:9px">${row.label}</td><td colspan="6"><div class="special-lbl" style="color:#185FA5">晚餐時間</div></td></tr>`;
+      return;
+    }
+    html += `<tr><td style="font-size:9px">${row.label}</td>`;
+    DAYS.forEach((d, di) => {
+      html += `<td><div class="sg">`;
+      const slotBgs = ['#E6F1FB','#D3D1C7','#EAF3DE','#FAC775','#FBEAF0','#EEEDFE'];
+      SLOTS.forEach((s, si) => {
+        const key = `${ti}-${di}-${si}`;
+        const data = schedule[key];
+        if (data) {
+          const c = getCourse(data.cid);
+          const col = color(courseIdx(data.cid));
+          html += `<div class="s" style="background:${col};color:#fff">${c ? c.name : ''}<br>${c ? c.teacher : ''}</div>`;
+        } else {
+          html += `<div class="s" style="background:${slotBgs[si]};color:#aaa">${s.label}</div>`;
+        }
+      });
+      html += `</div></td>`;
+    });
+    html += `</tr>`;
+  });
+  html += `</table></body></html>`;
+  const w = window.open('', '_blank');
+  w.document.write(html);
+  w.document.close();
+  setTimeout(() => w.print(), 600);
+}
+
+function exportWord() {
+  let html = `<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word'><head><meta charset="utf-8"><title>課表</title>
+  <style>body{font-family:Arial;font-size:9pt}table{border-collapse:collapse;width:100%}th,td{border:1pt solid #ccc;padding:3pt;text-align:center;vertical-align:top;font-size:8pt}th{background:#f5f5f5}</style>
+  </head><body><h2 style="font-size:13pt;font-weight:normal;margin-bottom:10pt">課表</h2>
+  <table><tr><th style="width:55pt">時間</th>${DAYS.map(d => `<th>${d}</th>`).join('')}</tr>`;
+  TIME_ROWS.forEach((row, ti) => {
+    if (row.type === 'break') {
+      html += `<tr><td style="background:#FFF8E8">${row.label}</td><td colspan="6" style="background:#FFF8E8;color:#854F0B;font-weight:bold">午休時間</td></tr>`;
+      return;
+    }
+    if (row.type === 'dinner') {
+      html += `<tr><td style="background:#EFF6FF">${row.label}</td><td colspan="6" style="background:#EFF6FF;color:#185FA5;font-weight:bold">晚餐時間</td></tr>`;
+      return;
+    }
+    html += `<tr><td style="font-size:7pt">${row.label}</td>`;
+    DAYS.forEach((d, di) => {
+      let cell = '';
+      SLOTS.forEach((s, si) => {
+        const key = `${ti}-${di}-${si}`;
+        const data = schedule[key];
+        if (data) { const c = getCourse(data.cid); cell += `[${s.label}]${c ? c.name : ''}(${c ? c.teacher : ''})\n`; }
+      });
+      html += `<td style="font-size:7pt;white-space:pre-wrap">${cell}</td>`;
+    });
+    html += `</tr>`;
+  });
+  html += `</table></body></html>`;
+  const blob = new Blob(['\ufeff', html], { type: 'application/msword' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = '課表.doc'; a.click();
+  URL.revokeObjectURL(url);
+}
+
+document.getElementById('inp-course').addEventListener('keydown', e => { if (e.key === 'Enter') document.getElementById('inp-teacher').focus(); });
+document.getElementById('inp-teacher').addEventListener('keydown', e => { if (e.key === 'Enter') addCourse(); });
+
+buildTable();
+renderPool();
+</script>
+</body>
+</html>
