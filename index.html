@@ -564,25 +564,60 @@ function deleteCourse(cid) {
 function exportPDF() { window.print(); }
 
 function exportWord() {
-  let html = `<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word'><head><meta charset="utf-8"><title>週課表</title>
-  <style>body{font-family:Arial,sans-serif;font-size:8.5pt}h2{font-size:12pt;font-weight:bold;margin-bottom:8pt}table{border-collapse:collapse;width:100%}th,td{border:0.5pt solid #bbb;padding:3pt;text-align:center;vertical-align:top;font-size:7.5pt}th{background:#f0f0f0;font-weight:bold}.break-row td{background:#FFFAF0}.dinner-row td{background:#F0F6FF}</style>
-  </head><body><h2>週課表</h2>
-  <table><tr><th style="width:52pt">時間</th>${DAYS.map(d => `<th>${d}</th>`).join('')}</tr>`;
+  let html = `<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'><head><meta charset="utf-8"><title>週課表</title>
+  <xml><w:WordDocument><w:View>Print</w:View></w:WordDocument></xml>
+  <style>
+    @page Section1{size:842pt 595pt;mso-page-orientation:landscape;margin:45pt 50pt 45pt 50pt}
+    div.Section1{page:Section1}
+    body{font-family:Arial,sans-serif;font-size:8pt}
+    h2{font-size:11pt;font-weight:bold;margin-bottom:6pt}
+    table{border-collapse:collapse;width:100%;table-layout:fixed}
+    th,td{border:0.5pt solid #bbb;padding:2.5pt;text-align:center;vertical-align:top;font-size:7pt;word-wrap:break-word}
+    th{background:#f0f0f0;font-weight:bold}
+    .break-row td{background:#FFFAF0}
+    .dinner-row td{background:#F0F6FF}
+  </style>
+  </head><body><div class="Section1"><h2>週課表</h2>
+  <table><tr><th style="width:50pt">時間</th>${DAYS.map(d => `<th>${d}</th>`).join('')}</tr>`;
   TIME_ROWS.forEach((row, ti) => {
-    if (row.type === 'break') { html += `<tr class="break-row"><td>${row.label}</td><td colspan="6" style="color:#854F0B;font-weight:bold;text-align:center">午休時間</td></tr>`; return; }
-    if (row.type === 'dinner') { html += `<tr class="dinner-row"><td>${row.label}</td><td colspan="6" style="color:#185FA5;font-weight:bold;text-align:center">晚餐時間</td></tr>`; return; }
-    html += `<tr><td style="font-size:7pt">${row.label}</td>`;
+    if (row.type === 'break') {
+      html += `<tr><td style="background:#FFFAF0;font-size:7pt">${row.label}</td><td colspan="6" style="background:#FFFAF0;color:#854F0B;font-weight:bold;text-align:center;padding:4pt">午休時間</td></tr>`;
+      return;
+    }
+    if (row.type === 'dinner') {
+      html += `<tr><td style="background:#F0F6FF;font-size:7pt">${row.label}</td><td colspan="6" style="background:#F0F6FF;color:#185FA5;font-weight:bold;text-align:center;padding:4pt">晚餐時間</td></tr>`;
+      return;
+    }
+    html += `<tr><td style="font-size:7pt;vertical-align:middle">${row.label}</td>`;
     DAYS.forEach((d, di) => {
-      let cell = '';
-      SLOTS.forEach((s, si) => {
-        const key = `${ti}-${di}-${si}`; const data = schedule[key];
-        if (data) { const c = getCourse(data.cid); cell += `[${s.label}] ${c ? c.name : ''}（${c ? c.teacher : ''}）\n`; }
-      });
-      html += `<td style="font-size:7pt;white-space:pre-wrap;text-align:left">${cell}</td>`;
+      // build 2x2 nested table for this cell
+      const slotBg = ['#E6F1FB','#D3D1C7','#FBEAF0','#EEEDFE'];
+      let innerRows = '';
+      // row 0: slots 0,1  row 1: slots 2,3
+      for (let r = 0; r < 2; r++) {
+        innerRows += '<tr>';
+        for (let c2 = 0; c2 < 2; c2++) {
+          const si = r * 2 + c2;
+          const s = SLOTS[si];
+          const key = `${ti}-${di}-${si}`;
+          const data = schedule[key];
+          if (data) {
+            const course = getCourse(data.cid);
+            const col = color(courseIdx(data.cid));
+            const name = course ? course.name : '';
+            const teacher = course ? course.teacher : '';
+            innerRows += `<td style="background:${col};color:#fff;font-size:6.5pt;padding:2pt;text-align:center;vertical-align:middle;width:50%"><b>${name}</b><br>${teacher}</td>`;
+          } else {
+            innerRows += `<td style="background:${slotBg[si]};padding:1pt;width:50%"></td>`;
+          }
+        }
+        innerRows += '</tr>';
+      }
+      html += `<td style="padding:1pt"><table style="width:100%;height:100%;border-collapse:collapse;table-layout:fixed">${innerRows}</table></td>`;
     });
     html += `</tr>`;
   });
-  html += `</table></body></html>`;
+  html += `</table></div></body></html>`;
   const blob = new Blob(['\ufeff', html], { type: 'application/msword' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
