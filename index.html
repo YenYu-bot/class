@@ -258,6 +258,18 @@ td { border: 0.5px solid var(--border-strong); padding: 0; vertical-align: top; 
 }
 .chip-del:hover { background: var(--danger-light); color: var(--danger); border-color: #F7C1C1; }
 
+.save-indicator {
+  font-size: 11px; color: var(--text-muted);
+  display: flex; align-items: center; gap: 5px;
+  transition: opacity 0.3s;
+}
+.save-dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: #4CAF50; flex-shrink: 0;
+  transition: background 0.3s;
+}
+.save-dot.dirty { background: #FFA726; }
+
 /* ── Print ── */
 @media print {
   @page { size: A4 landscape; margin: 10mm 12mm; }
@@ -296,6 +308,12 @@ td { border: 0.5px solid var(--border-strong); padding: 0; vertical-align: top; 
   <div class="sep"></div>
   <span class="sub">課表管理工具</span>
   <div class="sp"></div>
+  <div class="save-indicator" id="save-indicator">
+    <div class="save-dot" id="save-dot"></div>
+    <span id="save-label">已儲存</span>
+  </div>
+  <div class="sep"></div>
+  <button class="tbtn" onclick="clearStorage()">清除紀錄</button>
   <button class="tbtn" onclick="exportPDF()">列印 / PDF</button>
   <button class="tbtn" onclick="exportWord()">匯出 Word</button>
 </div>
@@ -632,8 +650,81 @@ function exportWord() {
 document.getElementById('inp-course').addEventListener('keydown', e => { if (e.key === 'Enter') document.getElementById('inp-teacher').focus(); });
 document.getElementById('inp-teacher').addEventListener('keydown', e => { if (e.key === 'Enter') addCourse(); });
 
+// ── Storage ──
+const STORAGE_KEY = 'schedule_v1';
+let saveTimer = null;
+
+function saveData() {
+  try {
+    const data = { courses, schedule };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    setSaveStatus('saved');
+  } catch(e) {
+    console.warn('Save failed', e);
+  }
+}
+
+function loadData() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return false;
+    const data = JSON.parse(raw);
+    if (data.courses) courses = data.courses;
+    if (data.schedule) schedule = data.schedule;
+    return true;
+  } catch(e) {
+    return false;
+  }
+}
+
+function setSaveStatus(state) {
+  const dot = document.getElementById('save-dot');
+  const lbl = document.getElementById('save-label');
+  if (state === 'dirty') {
+    dot.className = 'save-dot dirty';
+    lbl.textContent = '儲存中...';
+  } else {
+    dot.className = 'save-dot';
+    lbl.textContent = '已儲存';
+  }
+}
+
+function autoSave() {
+  setSaveStatus('dirty');
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(saveData, 600);
+}
+
+function clearStorage() {
+  if (!confirm('確定要清除所有課表紀錄嗎？')) return;
+  localStorage.removeItem(STORAGE_KEY);
+  courses = []; schedule = {}; rowHidden = {};
+  buildTable();
+  renderPool();
+  renderSlots();
+  checkConflicts();
+  setSaveStatus('saved');
+}
+
+// Patch save into mutating functions
+const _origRenderSlots = renderSlots;
+renderSlots = function() { _origRenderSlots(); autoSave(); };
+const _origRenderPool = renderPool;
+renderPool = function() { _origRenderPool(); };
+const _origAddCourse = addCourse;
+addCourse = function() { _origAddCourse(); autoSave(); };
+const _origDeleteCourse = deleteCourse;
+deleteCourse = function(cid) { _origDeleteCourse(cid); autoSave(); };
+
+// ── Init ──
 buildTable();
+const hasData = loadData();
+if (hasData) {
+  renderSlots();
+  checkConflicts();
+}
 renderPool();
+setSaveStatus('saved');
 </script>
 </body>
 </html>
